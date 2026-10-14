@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Date range report{% endblock %}
+{% block content %}
+{% set t = data.totals %}
+<div class="page-head">
+  <div><h1>Date range report</h1><p>{{ start|dmy }} – {{ end|dmy }} · {{ data.rows|length }} day(s)</p></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('reports.range_csv', start=start.isoformat(), end=end.isoformat()) }}">{{ icon('download') }} Export CSV</a>
+    <button type="button" class="btn btn-primary" onclick="window.print()">{{ icon('printer') }} Print</button>
+  </div>
+</div>
+<form class="toolbar no-print" method="get">
+  <label class="muted small">From</label><input type="date" name="start" value="{{ start.isoformat() }}">
+  <label class="muted small">To</label><input type="date" name="end" value="{{ end.isoformat() }}">
+  <button class="btn">Run report</button>
+  <div class="chips">{% for label, s, e in presets %}<a class="chip {{ 'active' if s == start and e == end }}" href="{{ url_for('reports.range_view', start=s.isoformat(), end=e.isoformat()) }}">{{ label }}</a>{% endfor %}</div>
+</form>
+<p class="muted small no-print">Up to {{ max_days }} days per report.</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="label">Occupancy</div><div class="value">{{ '%.1f'|format(t.occupancy) }}%</div><div class="sub">{{ t.occupied|num }} room nights sold</div></div>
+  <div class="kpi"><div class="label">ADR</div><div class="value">{{ t.adr|money }}</div></div>
+  <div class="kpi"><div class="label">RevPAR</div><div class="value">{{ t.revpar|money }}</div></div>
+  <div class="kpi"><div class="label">Revenue (pre-tax)</div><div class="value">{{ t.revenue|money }}</div>
+    <div class="sub">Rooms {{ t.room_revenue|money }} · Events {{ t.venue_revenue|money }} · Extras {{ t.extra_revenue|money }}</div></div>
+  <div class="kpi"><div class="label">Collected</div><div class="value">{{ t.collected|money }}</div><div class="sub">Invoiced {{ t.invoiced|money }} · Tax {{ t.tax|money }}</div></div>
+</div>
+
+<div class="card mb">
+  <div class="card-head"><h2>Daily revenue</h2><span class="muted small">peak {{ peak|money }}</span></div>
+  <div class="card-body">
+    <div class="chart">
+      {% for r in data.rows %}<div class="col" style="height:{{ (r.revenue / peak * 100)|round(1) }}%" title="{{ r.date|dmy }}: {{ r.revenue|money }} · {{ '%.0f'|format(r.occupancy) }}% occupancy"></div>{% endfor %}
+    </div>
+    <div class="chart-labels"><span>{{ start|dmy }}</span><span>{{ end|dmy }}</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap"><table class="table compact">
+    <thead><tr><th>Date</th><th class="num">Sold</th><th>Occupancy</th><th class="num">ADR</th><th class="num">Arr.</th><th class="num">Dep.</th>
+      <th class="num">Rooms</th><th class="num">Banquets</th><th class="num">Extras</th><th class="num">Revenue</th><th class="num">Invoiced</th><th class="num">Collected</th></tr></thead>
+    <tbody>
+    {% for r in data.rows %}
+      <tr><td class="nowrap"><a href="{{ url_for('reports.daily', date=r.date) }}">{{ r.date|dmy }}</a></td>
+        <td class="num">{{ r.occupied }}</td>
+        <td><div style="display:flex;gap:8px;align-items:center"><div class="bar" style="flex:1"><span style="width:{{ [r.occupancy, 100]|min }}%"></span></div><span class="small nowrap">{{ '%.0f'|format(r.occupancy) }}%</span></div></td>
+        <td class="num">{{ r.adr|money }}</td><td class="num">{{ r.arrivals }}</td><td class="num">{{ r.departures }}</td>
+        <td class="num">{{ r.room_revenue|money }}</td><td class="num">{{ r.venue_revenue|money }}</td><td class="num">{{ r.extra_revenue|money }}</td>
+        <td class="num"><strong>{{ r.revenue|money }}</strong></td><td class="num">{{ r.invoiced|money }}</td><td class="num">{{ r.collected|money }}</td></tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr><td>Total</td><td class="num">{{ t.occupied }}</td><td>{{ '%.1f'|format(t.occupancy) }}%</td><td class="num">{{ t.adr|money }}</td>
+      <td class="num">{{ t.arrivals }}</td><td class="num">{{ t.departures }}</td>
+      <td class="num">{{ t.room_revenue|money }}</td><td class="num">{{ t.venue_revenue|money }}</td><td class="num">{{ t.extra_revenue|money }}</td>
+      <td class="num">{{ t.revenue|money }}</td><td class="num">{{ t.invoiced|money }}</td><td class="num">{{ t.collected|money }}</td></tr></tfoot>
+  </table></div>
+</div>
+{% endblock %}

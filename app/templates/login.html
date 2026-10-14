@@ -1,0 +1,15 @@
+{% extends "_auth.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block card %}
+  {% if settings.hotel_logo %}<img class="hotel-logo" src="{{ url_for('media', name=settings.hotel_logo) }}" alt="">{% endif %}
+  <h2>Welcome back</h2>
+  <p class="muted">Sign in to {{ settings.hotel_name }}.</p>
+  <form method="post">
+    {{ csrf() }}
+    <div class="field"><label for="username">Username</label>
+      <input id="username" name="username" type="text" autocomplete="username" required autofocus value="{{ request.form.username }}"></div>
+    <div class="field"><label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn-primary">{{ icon('login') }} Sign in</button>
+  </form>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}New booking{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>New room booking</h1><p>Pick the dates, choose a free room, then add the guest.</p></div>
+</div>
+
+<form method="get" class="card mb">
+  <div class="card-body">
+    <div class="toolbar" style="margin:0;align-items:flex-end">
+      <div class="field"><label for="ci">Check-in</label><input type="date" id="ci" name="check_in" value="{{ check_in }}" min="{{ today.isoformat() }}" required></div>
+      <div class="field"><label for="co">Check-out</label><input type="date" id="co" name="check_out" value="{{ check_out }}" required></div>
+      {% if preset_guest %}<input type="hidden" name="guest_id" value="{{ preset_guest }}">{% endif %}
+      <button class="btn">{{ icon('search') }} Find rooms</button>
+      {% if check_in and check_out and check_out > check_in %}<span class="muted">{{ (check_out|todate - check_in|todate).days }} night(s)</span>{% endif %}
+    </div>
+    {{ err(errors, 'check_in') }}
+  </div>
+</form>
+
+<form method="post" novalidate>
+  {{ csrf() }}
+  <input type="hidden" name="check_in" value="{{ check_in }}">
+  <input type="hidden" name="check_out" value="{{ check_out }}">
+  <div class="grid grid-main">
+    <div class="stack">
+      <div class="card">
+        <div class="card-head"><h2>Available rooms</h2><span class="muted small">{{ rooms|length }} free for {{ check_in|dmy }} → {{ check_out|dmy }}</span></div>
+        <div class="card-body">
+          {% if rooms %}
+          <div class="room-options">
+            {% for r in rooms %}
+            <label class="room-option">
+              <input type="radio" name="room_id" value="{{ r.id }}" data-rate="{{ '%g'|format(r.eff_rate) }}" {{ 'checked' if preset_room|string == r.id|string }} required>
+              <strong>{{ r.number }}</strong><span>{{ r.type_name }} · {{ r.floor_name }}</span>
+              <span>Sleeps {{ r.max_occupancy }}{% if r.status == 'cleaning' %} · <em>being cleaned</em>{% endif %}</span>
+              <b>{{ r.eff_rate|money }}<span style="display:inline" class="muted"> / night</span></b>
+            </label>
+            {% endfor %}
+          </div>
+          {% else %}<div class="empty"><strong>No rooms available</strong>Change the dates or add rooms under Setup.</div>{% endif %}
+          {{ err(errors, 'room_id') }}
+        </div>
+      </div>
+      {% include "_guest_picker.html" %}
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-head"><h2>Stay details</h2></div>
+        <div class="card-body"><div class="form-grid">
+          <div class="field {{ 'has-error' if errors.adults }}"><label for="adults">Adults *</label><input type="number" id="adults" name="adults" min="1" max="50" value="{{ form.get('adults', 1) }}">{{ err(errors, 'adults') }}</div>
+          <div class="field"><label for="children">Children</label><input type="number" id="children" name="children" min="0" max="50" value="{{ form.get('children', 0) }}"></div>
+          <div class="field {{ 'has-error' if errors.rate }}"><label for="rate">Rate / night *</label><input type="number" step="0.01" min="0" id="rate" name="rate" data-rate-target value="{{ form.get('rate', '') }}">{{ err(errors, 'rate') }}</div>
+          <div class="field"><label for="extra_beds">Extra beds</label><input type="number" id="extra_beds" name="extra_beds" min="0" max="10" value="{{ form.get('extra_beds', 0) }}"></div>
+          <div class="field full {{ 'has-error' if errors.discount }}"><label for="discount">Discount (whole stay)</label><input type="number" step="0.01" min="0" id="discount" name="discount" value="{{ form.get('discount', 0) }}">{{ err(errors, 'discount') }}</div>
+          <div class="field full"><label for="source">Booking source</label>
+            <select id="source" name="source">{% for v, l in sources %}<option value="{{ v }}" {{ 'selected' if form.get('source') == v }}>{{ l }}</option>{% endfor %}</select></div>
+          <div class="field full"><label for="notes">Notes</label><textarea id="notes" name="notes" placeholder="Special requests, arrival time…">{{ form.get('notes', '') }}</textarea></div>
+        </div></div>
+      </div>
+      {% include "_advance.html" %}
+      <button class="btn btn-primary" style="padding:12px" {{ 'disabled' if not rooms }}>{{ icon('check') }} Confirm booking</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

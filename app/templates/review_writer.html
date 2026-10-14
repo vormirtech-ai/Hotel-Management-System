@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}AI review writer{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>AI review writer</h1><p>Generate a balanced, realistic review from a product's key features using Google Gemini – handy for listings, brochures and social posts.</p></div>
+</div>
+{% if not configured %}
+<div class="flashes"><div class="flash info">Gemini is not connected yet.
+  {% if user.role == 'admin' %}<a href="{{ url_for('setup.ai') }}">Add your API key in AI settings</a>.{% else %}Ask an administrator to add the API key.{% endif %}</div></div>
+{% endif %}
+<div class="grid grid-2">
+  <div class="card"><div class="card-body">
+    <form id="review-form" class="stack" novalidate>
+      {% if presets %}
+      <div class="field"><label for="preset">Start from your inventory</label>
+        <select id="preset"><option value="">— Choose a room type or venue —</option>
+          {% for p in presets %}<option value="{{ loop.index0 }}">{{ p.name }} ({{ p.category }})</option>{% endfor %}</select></div>
+      {% endif %}
+      <div class="field"><label for="productName">Product name *</label><input type="text" id="productName" maxlength="120" placeholder="e.g. Deluxe King Room" required></div>
+      <div class="field"><label for="productCategory">Category *</label><input type="text" id="productCategory" maxlength="80" placeholder="e.g. Hotel room, Banquet hall, Smartphone" required></div>
+      <div class="field"><label for="featureInput">Key features * <span class="muted">(press Enter after each, up to 10)</span></label>
+        <div class="tag-input" id="tags"><input type="text" id="featureInput" maxlength="120" placeholder="e.g. sea view balcony"></div></div>
+      <div class="error" id="form-error" hidden></div>
+      <div><button class="btn btn-primary" id="generate" type="submit"><span class="spinner"></span>{{ icon('sparkles') }} Generate review</button></div>
+    </form>
+  </div></div>
+  <div class="card">
+    <div class="card-head"><h2>Result</h2><button class="btn btn-sm" id="copy" type="button" hidden>Copy</button></div>
+    <div class="card-body review-out" id="result">
+      <div class="empty" style="padding:24px 0">Your review will appear here.</div>
+    </div>
+  </div>
+</div>
+<p class="muted small mt">API: <code>POST {{ url_for('ai.api_generate') }}</code> with JSON <code>{"productName", "productCategory", "keyFeatures": [...]}</code> returns <code>{"headline", "body"}</code>. Content safety filters block harmful output.</p>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var presets = {{ presets|tojson }};
+  var csrf = {{ csrf_token()|tojson }};
+  var features = [];
+  var tags = document.getElementById("tags"), input = document.getElementById("featureInput");
+  var errorBox = document.getElementById("form-error"), result = document.getElementById("result");
+  var button = document.getElementById("generate"), copy = document.getElementById("copy");
+
+  function render() {
+    tags.querySelectorAll(".tag").forEach(function (t) { t.remove(); });
+    features.forEach(function (f, i) {
+      var tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = f;
+      var x = document.createElement("button");
+      x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Remove " + f);
+      x.onclick = function () { features.splice(i, 1); render(); };
+      tag.appendChild(x);
+      tags.insertBefore(tag, input);
+    });
+  }
+  function addFeature() {
+    var v = input.value.trim();
+    if (v && features.length < 10 && features.indexOf(v) === -1) features.push(v);
+    input.value = "";
+    render();
+  }
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addFeature(); }
+    else if (e.key === "Backspace" && !input.value && features.length) { features.pop(); render(); }
+  });
+  input.addEventListener("blur", addFeature);
+  tags.addEventListener("click", function () { input.focus(); });
+
+  var preset = document.getElementById("preset");
+  if (preset) preset.addEventListener("change", function () {
+    var p = presets[preset.value];
+    if (!p) return;
+    document.getElementById("productName").value = p.name;
+    document.getElementById("productCategory").value = p.category;
+    features = p.features.slice(0, 10);
+    render();
+  });
+
+  function showError(msg) { errorBox.textContent = msg; errorBox.hidden = false; }
+
+  document.getElementById("review-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    addFeature();
+    errorBox.hidden = true;
+    var body = {
+      productName: document.getElementById("productName").value.trim(),
+      productCategory: document.getElementById("productCategory").value.trim(),
+      keyFeatures: features
+    };
+    if (!body.productName || !body.productCategory || !features.length) {
+      showError("Please fill in the product name, category and at least one key feature.");
+      return;
+    }
+    button.disabled = true; button.classList.add("loading");
+    fetch({{ url_for('ai.api_generate')|tojson }}, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-CSRF-Token": csrf},
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      return res.json().catch(function () { return {error: "Unexpected server response (" + res.status + ")."}; });
+    }).then(function (data) {
+      if (data.error) { showError(data.error); return; }
+      result.innerHTML = "";
+      var h = document.createElement("h3"); h.textContent = data.headline;
+      var p = document.createElement("p"); p.textContent = data.body;
+      result.appendChild(h); result.appendChild(p);
+      copy.hidden = false;
+      copy.onclick = function () {
+        navigator.clipboard.writeText(data.headline + "\n\n" + data.body).then(function () { copy.textContent = "Copied"; setTimeout(function () { copy.textContent = "Copy"; }, 1500); });
+      };
+    }).catch(function () {
+      showError("Could not reach the server. Please check that the application is running.");
+    }).finally(function () {
+      button.disabled = false; button.classList.remove("loading");
+    });
+  });
+})();
+</script>
+{% endblock %}

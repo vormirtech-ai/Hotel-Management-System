@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Good {{ 'morning' if now_hour < 12 else 'afternoon' if now_hour < 17 else 'evening' }}, {{ (user.full_name or user.username).split(' ')[0] }}</h1>
+    <p>Here is what is happening at {{ settings.hotel_name }} today.</p></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('front.event_new') }}">{{ icon('party') }} Book event</a>
+    <a class="btn btn-primary" href="{{ url_for('front.booking_new') }}">{{ icon('plus') }} New booking</a>
+  </div>
+</div>
+
+{% if total_rooms == 0 %}
+<div class="card mb"><div class="card-body">
+  <h2>Finish setting up</h2>
+  <p class="muted">Add your inventory so the front desk can start taking bookings.</p>
+  {% if user.role == 'admin' %}
+  <div class="actions">
+    <a class="btn" href="{{ url_for('setup.profile') }}">1. Hotel profile</a>
+    <a class="btn" href="{{ url_for('inventory.listing', kind='floors') }}">2. Floors</a>
+    <a class="btn" href="{{ url_for('inventory.listing', kind='room-types') }}">3. Room types</a>
+    <a class="btn btn-primary" href="{{ url_for('inventory.listing', kind='rooms') }}">4. Rooms</a>
+    <a class="btn" href="{{ url_for('inventory.listing', kind='venues') }}">5. Banquets &amp; lawns</a>
+  </div>
+  {% else %}<p>Ask an administrator to add rooms.</p>{% endif %}
+</div></div>
+{% endif %}
+
+<div class="kpis">
+  <div class="kpi"><div class="label">Occupancy tonight</div><div class="value">{{ '%.0f'|format(today_row.occupancy) }}%</div>
+    <div class="sub">{{ today_row.occupied }} of {{ total_rooms }} rooms sold</div></div>
+  <div class="kpi"><div class="label">In-house guests</div><div class="value">{{ in_house_count }}</div>
+    <div class="sub">rooms checked in</div></div>
+  <div class="kpi"><div class="label">Arrivals pending</div><div class="value">{{ arrivals|length }}</div>
+    <div class="sub">{{ departures|length }} departure{{ 's' if departures|length != 1 }} due</div></div>
+  <div class="kpi"><div class="label">Revenue today</div><div class="value">{{ today_row.revenue|money }}</div>
+    <div class="sub">before tax · ADR {{ today_row.adr|money }}</div></div>
+  <div class="kpi"><div class="label">Collected today</div><div class="value">{{ today_row.collected|money }}</div>
+    <div class="sub">{{ today_row.events }} event{{ 's' if today_row.events != 1 }} today</div></div>
+</div>
+
+<div class="grid grid-main">
+  <div class="card">
+    <div class="card-head"><h2>Rooms</h2>
+      <div class="legend"><span class="l-available">Available {{ counts.available }}</span><span class="l-occupied">Occupied {{ counts.occupied }}</span>
+        <span class="l-cleaning">Cleaning {{ counts.cleaning }}</span><span class="l-maintenance">Maintenance {{ counts.maintenance }}</span></div>
+    </div>
+    <div class="card-body">
+      {% for floor, rooms in floors.items() %}
+      <div class="floor">
+        <div class="floor-title">{{ floor }}</div>
+        <div class="rooms">
+          {% for r, stay in rooms %}
+          <div class="room {{ r.status }}">
+            <div class="num">{{ r.number }}</div>
+            <div class="type">{{ r.type_name }}</div>
+            {% if stay %}
+              <a class="guest" href="{{ url_for('front.booking', booking_id=stay.id) }}" title="{{ stay.full_name }}">{{ stay.full_name }}</a>
+            {% else %}
+            <details>
+              <summary>{{ r.status|capitalize }} ▾</summary>
+              <div class="menu">
+                {% for s in ('available', 'cleaning', 'maintenance') if s != r.status %}
+                <form method="post" action="{{ url_for('front.room_status', room_id=r.id) }}">{{ csrf() }}
+                  <input type="hidden" name="status" value="{{ s }}"><button>Mark {{ s }}</button></form>
+                {% endfor %}
+                {% if r.status != 'maintenance' %}
+                <a href="{{ url_for('front.booking_new', room=r.id) }}">New booking…</a>
+                {% endif %}
+              </div>
+            </details>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+        <div class="empty"><strong>No rooms yet</strong>Rooms you add under Setup appear here by floor.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Arrivals</h2><span class="muted small">reserved, due today or earlier</span></div>
+      {% if arrivals %}
+      <ul class="list">
+        {% for b in arrivals %}
+        <li><div><a class="title" href="{{ url_for('front.booking', booking_id=b.id) }}">{{ b.full_name }}</a>
+          <div class="muted small">Room {{ b.room_number }} · {{ b.code }}{% if b.check_in < today.isoformat() %} · <span style="color:var(--danger)">due {{ b.check_in|dmy }}</span>{% endif %}</div></div>
+          <form method="post" action="{{ url_for('front.check_in', booking_id=b.id) }}">{{ csrf() }}<button class="btn btn-sm btn-success">Check in</button></form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="empty">No pending arrivals.</div>{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Departures</h2><span class="muted small">due today or overdue</span></div>
+      {% if departures %}
+      <ul class="list">
+        {% for b in departures %}
+        <li><div><a class="title" href="{{ url_for('front.booking', booking_id=b.id) }}">{{ b.full_name }}</a>
+          <div class="muted small">Room {{ b.room_number }} · {{ b.code }}</div></div>
+          <a class="btn btn-sm" href="{{ url_for('front.check_out', booking_id=b.id) }}">Check out</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="empty">No departures due.</div>{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Events this week</h2><a class="small" href="{{ url_for('front.events') }}">All events</a></div>
+      {% if events %}
+      <ul class="list">
+        {% for e in events %}
+        <li><div><a class="title" href="{{ url_for('front.event', event_id=e.id) }}">{{ e.event_name or e.event_type or 'Event' }}</a>
+          <div class="muted small">{{ e.venue_name }} · {{ e.full_name }}</div></div>
+          <div class="right small"><strong>{{ e.event_date|dmy }}</strong><div class="muted">{{ {'full': 'Full day', 'morning': 'Morning', 'evening': 'Evening'}[e.slot] }}</div></div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="empty">No events in the next 7 days.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

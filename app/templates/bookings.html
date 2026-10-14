@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Room bookings{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Room bookings</h1><p>Reservations, in-house guests and past stays.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('front.booking_new') }}">{{ icon('plus') }} New booking</a></div>
+</div>
+<form class="toolbar" method="get">
+  <div class="chips">
+    {% for v, l in [('active', 'Active'), ('reserved', 'Reserved'), ('checked_in', 'In house'), ('checked_out', 'Checked out'), ('cancelled', 'Cancelled'), ('no_show', 'No-show'), ('all', 'All')] %}
+      <a class="chip {{ 'active' if status == v }}" href="{{ url_for('front.bookings', status=v, q=q or None) }}">{{ l }}</a>
+    {% endfor %}
+  </div>
+  <input type="hidden" name="status" value="{{ status }}">
+  <input type="search" name="q" value="{{ q }}" placeholder="Guest, phone, booking no. or room">
+  <button class="btn">{{ icon('search') }}</button>
+</form>
+<div class="card">
+  {% if rows %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Booking</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th class="num">Nights</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for b in rows %}
+      <tr>
+        <td><a class="row-link" href="{{ url_for('front.booking', booking_id=b.id) }}">{{ b.code }}</a></td>
+        <td>{{ b.full_name }}<div class="muted small">{{ b.phone }}</div></td>
+        <td>{{ b.room_number }}</td>
+        <td class="nowrap">{{ b.check_in|dmy }}</td><td class="nowrap">{{ b.check_out|dmy }}</td>
+        <td class="num">{{ (b.check_out|todate - b.check_in|todate).days }}</td>
+        <td>{{ badge(b.status, 'In house' if b.status == 'checked_in' else None) }}</td>
+        <td class="right nowrap">
+          {% if b.status == 'reserved' and b.check_in <= today.isoformat() %}
+            <form method="post" action="{{ url_for('front.check_in', booking_id=b.id) }}" class="inline">{{ csrf() }}<button class="btn btn-sm btn-success">Check in</button></form>
+          {% elif b.status == 'checked_in' %}
+            <a class="btn btn-sm" href="{{ url_for('front.check_out', booking_id=b.id) }}">Check out</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="empty"><strong>No bookings here</strong>Try another filter or create a new booking.</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "_auth.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Welcome{% endblock %}
+{% block card %}
+  <h2>Let's set up your hotel</h2>
+  <p class="muted">Create the administrator account. You can add staff users later.</p>
+  <form method="post">
+    {{ csrf() }}
+    <div class="field"><label for="hotel_name">Hotel name</label>
+      <input id="hotel_name" name="hotel_name" type="text" maxlength="120" required value="{{ form.hotel_name }}">{{ err(errors, 'hotel_name') }}</div>
+    <div class="field"><label for="full_name">Your name</label>
+      <input id="full_name" name="full_name" type="text" maxlength="80" value="{{ form.full_name }}"></div>
+    <div class="field"><label for="username">Username</label>
+      <input id="username" name="username" type="text" maxlength="40" autocomplete="username" required value="{{ form.username or 'admin' }}">{{ err(errors, 'username') }}</div>
+    <div class="field"><label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8">{{ err(errors, 'password') }}
+      <div class="help">At least 8 characters.</div></div>
+    <div class="field"><label for="confirm">Confirm password</label>
+      <input id="confirm" name="confirm" type="password" autocomplete="new-password" required>{{ err(errors, 'confirm') }}</div>
+    <button class="btn btn-primary">Create account &amp; continue</button>
+  </form>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Event {{ vb.code }}{% endblock %}
+{% block content %}
+{% set segment = 'events' %}{% set record = vb %}
+{% set locked = invoice or vb.status == 'cancelled' %}
+<div class="page-head">
+  <div><a href="{{ url_for('front.events') }}" class="small">{{ icon('arrow-left') }} Banquets &amp; lawns</a>
+    <h1>{{ vb.code }} · {{ vb.event_name or vb.event_type or 'Event' }} {{ badge(vb.status) }}</h1>
+    <p>{{ vb.venue_name }} · {{ vb.event_date|dmy }} · {{ {'full': 'Full day', 'morning': 'Morning slot', 'evening': 'Evening slot'}[vb.slot] }}</p></div>
+  <div class="actions">
+    {% if vb.status == 'confirmed' %}
+      <a class="btn" href="{{ url_for('front.event_edit', event_id=vb.id) }}">{{ icon('edit') }} Edit</a>
+      <form method="post" action="{{ url_for('front.event_action', event_id=vb.id, action='cancel') }}" class="inline" data-confirm="Cancel this event?">{{ csrf() }}<button class="btn btn-danger">Cancel event</button></form>
+      <form method="post" action="{{ url_for('front.event_action', event_id=vb.id, action='complete') }}" class="inline" data-confirm="Mark the event completed and issue the invoice?">{{ csrf() }}<button class="btn btn-primary">{{ icon('receipt') }} Complete &amp; invoice</button></form>
+    {% elif vb.status == 'completed' and not invoice %}
+      <form method="post" action="{{ url_for('front.event_action', event_id=vb.id, action='invoice') }}" class="inline">{{ csrf() }}<button class="btn btn-primary">{{ icon('receipt') }} Issue invoice</button></form>
+    {% endif %}
+  </div>
+</div>
+<div class="grid grid-main">
+  <div class="stack">{% include "_ledger.html" %}</div>
+  <div class="stack">
+    <div class="card"><div class="card-head"><h2>Event</h2></div><div class="card-body">
+      <dl class="details">
+        <dt>Venue</dt><dd>{{ vb.venue_name }}<div class="muted small">{{ 'Banquet hall' if vb.venue_kind == 'banquet' else 'Lawn' }}{% if vb.capacity %} · capacity {{ vb.capacity }}{% endif %}</div></dd>
+        <dt>Date</dt><dd>{{ vb.event_date|dmy }}</dd>
+        <dt>Slot</dt><dd>{{ {'full': 'Full day', 'morning': 'Morning', 'evening': 'Evening'}[vb.slot] }}</dd>
+        <dt>Type</dt><dd>{{ vb.event_type or '—' }}</dd>
+        <dt>Guests</dt><dd>{{ vb.pax or '—' }}</dd>
+        <dt>Rate</dt><dd>{{ vb.rate|money }}{% if vb.discount %} <span class="muted">(−{{ vb.discount|money }})</span>{% endif %}</dd>
+        <dt>Booked</dt><dd>{{ vb.created_at|dt }}</dd>
+        {% if vb.notes %}<dt>Notes</dt><dd style="white-space:pre-line">{{ vb.notes }}</dd>{% endif %}
+      </dl>
+    </div></div>
+    <div class="card"><div class="card-head"><h2>Host</h2><a class="small" href="{{ url_for('front.guest', guest_id=guest.id) }}">Profile</a></div><div class="card-body">
+      <dl class="details">
+        <dt>Name</dt><dd>{{ guest.full_name }}</dd>
+        <dt>Phone</dt><dd>{{ guest.phone or '—' }}</dd>
+        <dt>Email</dt><dd>{{ guest.email or '—' }}</dd>
+        {% if guest.company %}<dt>Company</dt><dd>{{ guest.company }}</dd>{% endif %}
+        {% if guest.gstin %}<dt>GSTIN</dt><dd>{{ guest.gstin }}</dd>{% endif %}
+      </dl>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

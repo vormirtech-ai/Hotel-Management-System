@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block content %}
+<div class="page-head">
+  <div>
+    {% if back %}<a href="{{ back }}" class="small">{{ icon('arrow-left') }} Back</a>{% endif %}
+    <h1>{{ title }}</h1>
+    {% if intro %}<p>{{ intro }}</p>{% endif %}
+  </div>
+</div>
+<div class="card" style="max-width:860px">
+  <div class="card-body">
+    <form method="post" {% if multipart %}enctype="multipart/form-data"{% endif %} novalidate>
+      {{ csrf() }}
+      <div class="form-grid">
+        {% for f in fields %}
+          {% if f.type == 'file' and saved_logo %}
+            <div class="field full">
+              <label>Current logo</label>
+              <div class="logo-preview"><img src="{{ url_for('media', name=saved_logo) }}" alt="Hotel logo">
+                <label class="check small"><input type="checkbox" name="remove_logo" value="1"> Remove logo</label></div>
+            </div>
+          {% endif %}
+          {{ field(f, values.get(f.name) if f.name else None, errors.get(f.name)) }}
+        {% endfor %}
+      </div>
+      <div class="form-actions">
+        <div class="actions">
+          <button class="btn btn-primary">{{ icon('check') }} Save</button>
+          {% if back %}<a class="btn" href="{{ back }}">Cancel</a>{% endif %}
+        </div>
+        {% if delete_url %}<button class="btn btn-danger" form="delete-form">Delete</button>{% endif %}
+      </div>
+    </form>
+    {% if delete_url %}
+    <form id="delete-form" method="post" action="{{ delete_url }}" data-confirm="Delete this item permanently?">{{ csrf() }}</form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

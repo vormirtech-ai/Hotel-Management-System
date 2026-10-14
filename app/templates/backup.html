@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Backup{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Backup</h1><p>All data is stored locally in a single SQLite database file.</p></div></div>
+<div class="card" style="max-width:760px"><div class="card-body stack">
+  <dl class="details"><dt>Database file</dt><dd><span class="mono">{{ db_path }}</span></dd></dl>
+  <p>Download a consistent copy of the database at any time, even while the system is in use. Keep backups on another drive or cloud storage.</p>
+  <form method="post" action="{{ url_for('setup.backup_download') }}">{{ csrf() }}
+    <button class="btn btn-primary">{{ icon('download') }} Download backup</button></form>
+  <p class="muted small">To restore: stop the application, delete <span class="mono">hotel.db-wal</span> and <span class="mono">hotel.db-shm</span> if present, replace <span class="mono">hotel.db</span> in the data folder with the backup file (renamed to <span class="mono">hotel.db</span>), then start the application again.</p>
+</div></div>
+{% endblock %}

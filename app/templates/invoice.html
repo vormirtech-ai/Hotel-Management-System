@@ -1,0 +1,128 @@
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invoice {{ inv.number }} · {{ hotel.hotel_name }}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/vormir-square.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>
+    body { background: #eef0f3; }
+    .sheet { max-width: 860px; margin: 24px auto; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 40px; box-shadow: var(--shadow); }
+    .inv-head { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 2px solid var(--text); }
+    .inv-head img { max-height: 70px; max-width: 200px; margin-bottom: 8px; }
+    .inv-head h1 { font-size: 22px; }
+    .inv-title { text-align: right; }
+    .inv-title h2 { font-size: 26px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .inv-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 20px 0; }
+    .inv-meta h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
+    .sheet .table th { background: #f6f7f9; }
+    .words { margin-top: 12px; font-style: italic; color: #344054; }
+    .terms { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; }
+    .sign { text-align: center; min-width: 200px; }
+    .sign div { border-top: 1px solid #98a2b3; padding-top: 6px; margin-top: 48px; }
+    .toolbar-top { max-width: 860px; margin: 18px auto 0; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .void-stamp { color: var(--danger); border: 3px solid var(--danger); display: inline-block; padding: 4px 14px; font-weight: 800; letter-spacing: .2em; transform: rotate(-4deg); margin-top: 8px; }
+    @media print { body { background: #fff; } .sheet { margin: 0; border: 0; box-shadow: none; padding: 0; max-width: none; } }
+    @media (max-width: 700px) { .sheet { padding: 20px; margin: 12px; } .inv-head, .inv-meta { grid-template-columns: 1fr; flex-direction: column; } .inv-title { text-align: left; } }
+  </style>
+</head>
+<body>
+<div class="toolbar-top no-print">
+  <a class="btn" href="{{ url_for('front.booking', booking_id=record.id) if kind == 'booking' else url_for('front.event', event_id=record.id) }}">{{ icon('arrow-left') }} Back to {{ record.code }}</a>
+  <div class="actions">
+    {% if user.role == 'admin' and inv.status == 'issued' %}
+    <form method="post" action="{{ url_for('front.void_invoice', invoice_id=inv.id) }}" class="inline" data-confirm="Void invoice {{ inv.number }}? This cannot be undone.">{{ csrf() }}<button class="btn btn-danger">Void</button></form>
+    {% endif %}
+    <button class="btn btn-primary" onclick="window.print()">{{ icon('printer') }} Print / Save PDF</button>
+  </div>
+</div>
+<div class="sheet">
+  <div class="inv-head">
+    <div>
+      {% if hotel.hotel_logo %}<img src="{{ url_for('media', name=hotel.hotel_logo) }}" alt="">{% endif %}
+      <h1>{{ hotel.hotel_name }}</h1>
+      {% if hotel.hotel_tagline %}<div class="muted">{{ hotel.hotel_tagline }}</div>{% endif %}
+      <div class="small" style="margin-top:6px;white-space:pre-line">{{ hotel.hotel_address }}{% if hotel.hotel_city or hotel.hotel_state %}
+{{ [hotel.hotel_city, hotel.hotel_state, hotel.hotel_pincode]|select|join(', ') }}{% endif %}</div>
+      <div class="small">{{ [hotel.hotel_phone, hotel.hotel_email, hotel.hotel_website]|select|join(' · ') }}</div>
+      {% if hotel.hotel_gstin %}<div class="small"><strong>GSTIN:</strong> {{ hotel.hotel_gstin }}{% if hotel.hotel_state_code %} · <strong>State code:</strong> {{ hotel.hotel_state_code }}{% endif %}</div>{% endif %}
+      {% if hotel.hotel_pan %}<div class="small"><strong>PAN:</strong> {{ hotel.hotel_pan }}</div>{% endif %}
+    </div>
+    <div class="inv-title">
+      <h2>Tax invoice</h2>
+      <div><strong>{{ inv.number }}</strong></div>
+      <div class="muted">Date: {{ inv.issue_date|dmy }}</div>
+      <div class="muted">Ref: {{ record.code }}</div>
+      {% if inv.status == 'void' %}<div class="void-stamp">VOID</div>{% endif %}
+    </div>
+  </div>
+  <div class="inv-meta">
+    <div>
+      <h3>Billed to</h3>
+      <strong>{{ guest.full_name }}</strong>
+      {% if guest.company %}<div>{{ guest.company }}</div>{% endif %}
+      {% if guest.address %}<div class="small" style="white-space:pre-line">{{ guest.address }}</div>{% endif %}
+      <div class="small">{{ [guest.phone, guest.email]|select|join(' · ') }}</div>
+      {% if guest.gstin %}<div class="small"><strong>GSTIN:</strong> {{ guest.gstin }}</div>{% endif %}
+    </div>
+    <div>
+      {% if kind == 'booking' %}
+      <h3>Stay</h3>
+      <div>Room {{ record.room_number }} · {{ record.type_name }}</div>
+      <div class="small">{{ record.check_in|dmy }} → {{ record.check_out|dmy }} · {{ record.adults + record.children }} guest(s)</div>
+      {% else %}
+      <h3>Event</h3>
+      <div>{{ record.venue_name }}</div>
+      <div class="small">{{ record.event_date|dmy }} · {{ record.event_name or record.event_type }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <table class="table compact">
+    <thead><tr><th>#</th><th>Description</th><th>SAC</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Discount</th><th class="num">Taxable</th><th class="num">Tax</th></tr></thead>
+    <tbody>
+    {% for ln in lines %}
+      <tr><td>{{ loop.index }}</td><td>{{ ln.description }}</td><td>{{ ln.sac }}</td><td class="num">{{ '%g'|format(ln.qty) }}</td>
+        <td class="num">{{ ln.rate|money(hotel.currency_symbol) }}</td><td class="num">{{ ln.discount|money(hotel.currency_symbol) if ln.discount else '—' }}</td>
+        <td class="num">{{ ln.taxable|money(hotel.currency_symbol) }}</td>
+        <td class="num small">{% for t in ln.taxes %}{{ t.name }} {{ '%g'|format(t.rate) }}%<br>{% else %}—{% endfor %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="inv-meta" style="align-items:start">
+    <div>
+      {% if tax_summary %}
+      <h3>Tax summary</h3>
+      <table class="table compact">
+        <thead><tr><th>Tax</th><th class="num">Taxable value</th><th class="num">Amount</th></tr></thead>
+        <tbody>{% for t in tax_summary %}<tr><td>{{ t.name }} @ {{ '%g'|format(t.rate) }}%</td><td class="num">{{ t.taxable|money(hotel.currency_symbol) }}</td><td class="num">{{ t.amount|money(hotel.currency_symbol) }}</td></tr>{% endfor %}</tbody>
+      </table>
+      {% endif %}
+      {% if payments %}
+      <h3 style="margin-top:14px">Payments received</h3>
+      <div class="small">{% for p in payments %}{{ p.paid_on|dmy }} · {{ p.method|upper }} · {{ p.amount|money(hotel.currency_symbol) }}<br>{% endfor %}</div>
+      {% endif %}
+    </div>
+    <div>
+      <table class="totals">
+        <tr><td class="muted">Subtotal</td><td>{{ inv.subtotal|money(hotel.currency_symbol) }}</td></tr>
+        {% if inv.discount %}<tr><td class="muted">Discount</td><td>−{{ inv.discount|money(hotel.currency_symbol) }}</td></tr>{% endif %}
+        <tr><td class="muted">Taxable value</td><td>{{ inv.taxable|money(hotel.currency_symbol) }}</td></tr>
+        <tr><td class="muted">Total tax</td><td>{{ inv.tax_total|money(hotel.currency_symbol) }}</td></tr>
+        {% if inv.round_off %}<tr><td class="muted">Round off</td><td>{{ inv.round_off|money(hotel.currency_symbol) }}</td></tr>{% endif %}
+        <tr class="grand"><td>Grand total</td><td>{{ inv.total|money(hotel.currency_symbol) }}</td></tr>
+        <tr><td class="muted">Paid</td><td>{{ paid|money(hotel.currency_symbol) }}</td></tr>
+        <tr><td><strong>Balance due</strong></td><td class="{{ 'balance-due' if balance > 0 else 'balance-ok' }}">{{ balance|money(hotel.currency_symbol) }}</td></tr>
+      </table>
+      <div class="words right">{{ words }}</div>
+    </div>
+  </div>
+  <div class="terms">
+    <div>{{ hotel.invoice_terms }}<br><span class="small">This is a computer generated invoice.</span></div>
+    <div class="sign"><div>Authorised signatory</div></div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

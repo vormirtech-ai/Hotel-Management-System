@@ -1,0 +1,85 @@
+{# Bill, extra charges and payments for a booking or event.
+   Needs: bill, charges, payments, paid, balance, invoice, methods, tax_classes, segment, record, locked #}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+<div class="card" id="charges">
+  <div class="card-head"><h2>Extra charges</h2><span class="muted small">food, laundry, decoration…</span></div>
+  {% if charges %}
+  <div class="table-wrap"><table class="table compact">
+    <thead><tr><th>Date</th><th>Description</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Amount</th><th></th></tr></thead>
+    <tbody>
+    {% for c in charges %}
+      <tr><td class="nowrap">{{ c.charge_date|dmy }}</td><td>{{ c.description }}</td><td class="num">{{ '%g'|format(c.quantity) }}</td>
+        <td class="num">{{ c.unit_price|money }}</td><td class="num">{{ (c.quantity * c.unit_price)|money }}</td>
+        <td class="right">{% if not invoice %}<form method="post" action="{{ url_for('front.delete_charge', charge_id=c.id) }}" class="inline" data-confirm="Remove this charge?">{{ csrf() }}
+          <input type="hidden" name="next" value="{{ request.path }}#charges"><button class="btn btn-sm btn-ghost" title="Remove">{{ icon('x') }}</button></form>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+  {% if not locked %}
+  <form method="post" action="{{ url_for('front.add_charge', segment=segment, record_id=record.id) }}" class="card-body" style="border-top:1px solid var(--border)">
+    {{ csrf() }}
+    <div class="form-grid" style="grid-template-columns:2fr 1fr 1fr 1fr">
+      <div class="field"><label>Description</label><input type="text" name="description" maxlength="120" required placeholder="e.g. Room service dinner"></div>
+      <div class="field"><label>Date</label><input type="date" name="charge_date" value="{{ today.isoformat() }}" required></div>
+      <div class="field"><label>Qty</label><input type="number" name="quantity" value="1" min="0.01" step="0.01" required></div>
+      <div class="field"><label>Unit price</label><input type="number" name="unit_price" min="0" step="0.01" required></div>
+      <div class="field" style="grid-column:1 / 3"><label>Tax type</label>
+        <select name="tax_class">{% for v, l in tax_classes %}<option value="{{ v }}" {{ 'selected' if v == default_tax_class }}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="field" style="grid-column:3 / 5;align-self:end"><button class="btn" style="width:100%">{{ icon('plus') }} Add charge</button></div>
+    </div>
+  </form>
+  {% elif not charges %}<div class="empty">No extra charges.</div>{% endif %}
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>{{ 'Invoice ' ~ invoice.number if invoice else 'Bill estimate' }}</h2>
+    {% if invoice %}<a class="btn btn-sm" href="{{ url_for('front.invoice', invoice_id=invoice.id) }}">{{ icon('printer') }} View invoice</a>{% endif %}</div>
+  <div class="table-wrap"><table class="table compact">
+    <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+    {% for ln in bill.lines %}
+      <tr><td>{{ ln.description }}{% if ln.discount %}<div class="muted small">Discount −{{ ln.discount|money }}</div>{% endif %}</td>
+        <td class="num">{{ '%g'|format(ln.qty) }}</td><td class="num">{{ ln.rate|money }}</td><td class="num">{{ ln.taxable|money }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <div class="card-body">
+    <table class="totals">
+      <tr><td class="muted">Subtotal</td><td>{{ bill.subtotal|money }}</td></tr>
+      {% if bill.discount %}<tr><td class="muted">Discount</td><td>−{{ bill.discount|money }}</td></tr>{% endif %}
+      {% for t in bill.tax_summary %}<tr><td class="muted">{{ t.name }} @ {{ '%g'|format(t.rate) }}%</td><td>{{ t.amount|money }}</td></tr>{% endfor %}
+      {% if bill.round_off %}<tr><td class="muted">Round off</td><td>{{ bill.round_off|money }}</td></tr>{% endif %}
+      <tr class="grand"><td>Total</td><td>{{ (invoice.total if invoice else bill.total)|money }}</td></tr>
+      <tr><td class="muted">Paid</td><td>{{ paid|money }}</td></tr>
+      <tr><td><strong>Balance</strong></td><td class="{{ 'balance-due' if balance > 0 else 'balance-ok' }}">{{ balance|money }}</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card" id="payments">
+  <div class="card-head"><h2>Payments</h2><span class="muted small">enter a negative amount for a refund</span></div>
+  {% if payments %}
+  <div class="table-wrap"><table class="table compact">
+    <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th class="num">Amount</th><th></th></tr></thead>
+    <tbody>
+    {% for p in payments %}
+      <tr><td class="nowrap">{{ p.paid_on|dmy }}</td><td>{{ p.method|upper if p.method == 'upi' else p.method|capitalize }}</td>
+        <td>{{ p.reference }}{% if p.notes %} <span class="muted small">{{ p.notes }}</span>{% endif %}</td><td class="num">{{ p.amount|money }}</td>
+        <td class="right">{% if user.role == 'admin' %}<form method="post" action="{{ url_for('front.delete_payment', payment_id=p.id) }}" class="inline" data-confirm="Delete this payment record?">{{ csrf() }}
+          <input type="hidden" name="next" value="{{ request.path }}#payments"><button class="btn btn-sm btn-ghost" title="Delete">{{ icon('x') }}</button></form>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+  <form method="post" action="{{ url_for('front.add_payment', segment=segment, record_id=record.id) }}" class="card-body" style="border-top:1px solid var(--border)">
+    {{ csrf() }}
+    <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="field"><label>Amount</label><input type="number" step="0.01" name="amount" required value="{{ '%.2f'|format(balance) if balance > 0 }}"></div>
+      <div class="field"><label>Method</label><select name="method">{% for v, l in methods %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Date</label><input type="date" name="paid_on" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" required></div>
+      <div class="field" style="grid-column:1 / 3"><label>Reference</label><input type="text" name="reference" maxlength="80" placeholder="Transaction / receipt number"></div>
+      <div class="field" style="align-self:end"><button class="btn btn-primary" style="width:100%">{{ icon('wallet') }} Record payment</button></div>
+    </div>
+  </form>
+</div>

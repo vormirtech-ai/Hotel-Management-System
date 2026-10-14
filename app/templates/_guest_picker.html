@@ -1,0 +1,28 @@
+{# Choose an existing guest or enter a new one. Needs: guests, guest_fields, form, errors, preset_guest #}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% set mode = form.get('guest_mode') or ('existing' if preset_guest else 'new') %}
+<div class="card">
+  <div class="card-head"><h2>Guest</h2>
+    <div class="segmented">
+      <label><input type="radio" name="guest_mode" value="new" data-guest-mode {{ 'checked' if mode == 'new' }}><span>New guest</span></label>
+      <label><input type="radio" name="guest_mode" value="existing" data-guest-mode {{ 'checked' if mode == 'existing' }} {{ 'disabled' if not guests }}><span>Existing guest</span></label>
+    </div>
+  </div>
+  <div class="card-body">
+    <div data-guest-panel="existing">
+      <div class="field {{ 'has-error' if errors.guest_id }}">
+        <label for="guest_search">Find guest</label>
+        <input type="search" id="guest_search" placeholder="Type a name or phone to filter" data-filter-select="#guest_id" style="margin-bottom:8px">
+        <select id="guest_id" name="guest_id" size="6">
+          {% for g in guests %}<option value="{{ g.id }}" {{ 'selected' if (form.get('guest_id') or preset_guest)|string == g.id|string }}>{{ g.full_name }}{% if g.phone %} · {{ g.phone }}{% endif %}</option>{% endfor %}
+        </select>
+        {{ err(errors, 'guest_id') }}
+      </div>
+    </div>
+    <div data-guest-panel="new">
+      <div class="form-grid">
+        {% for f in guest_fields %}{{ field(f, form.get('g_' ~ f.name), errors.get('g_' ~ f.name), 'g_') }}{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>

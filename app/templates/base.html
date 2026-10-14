@@ -1,0 +1,102 @@
+{% from "_macros.html" import icon, csrf with context %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ title or 'Dashboard' }}{% endblock %} · {{ settings.hotel_name }}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/vormir-square.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+{% macro nav_link(endpoint, label, ico, active_when=None) -%}
+  {% set ep = request.endpoint or '' %}
+  {% set is_active = ((ep == endpoint or (endpoint == 'inventory.listing' and ep == 'inventory.edit')) and (not kwargs or request.view_args.get('kind') == kwargs.get('kind'))) or (active_when and ep in active_when) %}
+  <a href="{{ url_for(endpoint, **kwargs) }}" class="{{ 'active' if is_active }}">{{ icon(ico) }}<span>{{ label }}</span></a>
+{%- endmacro %}
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      {% if settings.hotel_logo %}<img src="{{ url_for('media', name=settings.hotel_logo) }}" alt="">
+      {% else %}<div class="mark">{{ settings.hotel_name[:1]|upper }}</div>{% endif %}
+      <div><strong>{{ settings.hotel_name }}</strong><span>Hotel Management</span></div>
+    </div>
+    <nav class="nav">
+      {{ nav_link('front.dashboard', 'Dashboard', 'home') }}
+      <div class="nav-group"><div class="nav-title">Front desk</div>
+        {{ nav_link('front.booking_new', 'New booking', 'plus') }}
+        {{ nav_link('front.bookings', 'Room bookings', 'calendar', ['front.booking', 'front.booking_edit', 'front.check_out']) }}
+        {{ nav_link('front.events', 'Banquets & lawns', 'party', ['front.event', 'front.event_new', 'front.event_edit']) }}
+        {{ nav_link('front.guests', 'Guests', 'users', ['front.guest', 'front.guest_form']) }}
+        {{ nav_link('front.invoices', 'Invoices', 'receipt', ['front.invoice']) }}
+      </div>
+      {% if user.role == 'admin' %}
+      <div class="nav-group"><div class="nav-title">Reports</div>
+        {{ nav_link('reports.daily', 'Daily progress', 'chart') }}
+        {{ nav_link('reports.range_view', 'Date range report', 'calendar') }}
+        {{ nav_link('reports.forecast_view', 'Demand forecast', 'trend') }}
+      </div>
+      {% endif %}
+      <div class="nav-group"><div class="nav-title">AI tools</div>
+        {{ nav_link('ai.review_writer', 'Review writer', 'sparkles') }}
+      </div>
+      {% if user.role == 'admin' %}
+      <div class="nav-group"><div class="nav-title">Setup</div>
+        {{ nav_link('setup.profile', 'Hotel profile', 'building') }}
+        {{ nav_link('setup.billing_rules', 'Billing rules', 'file') }}
+        {{ nav_link('inventory.listing', 'Taxes', 'percent', kind='taxes') }}
+        {{ nav_link('inventory.listing', 'Floors', 'layers', kind='floors') }}
+        {{ nav_link('inventory.listing', 'Room types', 'tag', kind='room-types') }}
+        {{ nav_link('inventory.listing', 'Rooms', 'bed', kind='rooms') }}
+        {{ nav_link('inventory.listing', 'Banquets & lawns', 'party', kind='venues') }}
+        {{ nav_link('auth.users', 'Users', 'user', ['auth.user_form']) }}
+        {{ nav_link('setup.ai', 'AI settings', 'sparkles') }}
+        {{ nav_link('setup.license', 'License', 'key') }}
+        {{ nav_link('setup.backup', 'Backup', 'database') }}
+      </div>
+      {% else %}
+      <div class="nav-group"><div class="nav-title">Account</div>
+        {{ nav_link('setup.license', 'License', 'key') }}
+      </div>
+      {% endif %}
+    </nav>
+    <div class="sidebar-foot">
+      <small>Powered by</small>
+      <img src="{{ url_for('static', filename='img/vormir-logo.png') }}" alt="Vormir Tech Solutions">
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-toggle" type="button" aria-label="Menu" onclick="document.body.classList.toggle('nav-open')">{{ icon('menu') }}</button>
+        <span class="muted today">{{ today.strftime('%A, %d %B %Y') }}</span>
+      </div>
+      <div class="who">
+        <a class="btn btn-sm btn-ghost" href="{{ url_for('auth.password') }}">{{ icon('lock') }}<span class="btn-text">Password</span></a>
+        <div class="avatar" title="{{ user.full_name }}">{{ (user.full_name or user.username)[:2]|upper }}</div>
+        <div class="small"><strong style="color:var(--text)">{{ user.full_name or user.username }}</strong><br>{{ 'Administrator' if user.role == 'admin' else 'Front desk' }}</div>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="inline">{{ csrf() }}
+          <button class="btn btn-sm btn-ghost" title="Sign out">{{ icon('logout') }}</button></form>
+      </div>
+    </header>
+    {% if not license_status.valid %}
+      {% if trial_left > 0 %}
+      <div class="banner trial no-print">{{ icon('key') }} Trial version – {{ trial_left }} day{{ 's' if trial_left != 1 }} left.
+        <a href="{{ url_for('setup.license') }}">Activate a license</a></div>
+      {% else %}
+      <div class="banner expired no-print">{{ icon('lock') }} The trial has ended. Activate a license to continue using the software.</div>
+      {% endif %}
+    {% endif %}
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}<div class="flashes">{% for cat, msg in messages %}<div class="flash {{ cat if cat in ('success', 'error') else 'info' }}">{{ msg }}</div>{% endfor %}</div>{% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

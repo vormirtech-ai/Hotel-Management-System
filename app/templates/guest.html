@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}{{ guest.full_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><a href="{{ url_for('front.guests') }}" class="small">{{ icon('arrow-left') }} Guests</a><h1>{{ guest.full_name }}</h1>
+    <p>{{ guest.company or 'Guest' }} · since {{ guest.created_at|dmy }}</p></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('front.guest_form', guest_id=guest.id) }}">{{ icon('edit') }} Edit</a>
+    <a class="btn" href="{{ url_for('front.event_new', guest_id=guest.id) }}">{{ icon('party') }} Book event</a>
+    <a class="btn btn-primary" href="{{ url_for('front.booking_new', guest_id=guest.id) }}">{{ icon('plus') }} New booking</a>
+  </div>
+</div>
+<div class="grid grid-main">
+  <div class="stack">
+    <div class="card"><div class="card-head"><h2>Stays</h2></div>
+      {% if stays %}<div class="table-wrap"><table class="table">
+        <thead><tr><th>Booking</th><th>Room</th><th>Dates</th><th>Status</th></tr></thead><tbody>
+        {% for b in stays %}<tr><td><a class="row-link" href="{{ url_for('front.booking', booking_id=b.id) }}">{{ b.code }}</a></td>
+          <td>{{ b.room_number }}</td><td>{{ b.check_in|dmy }} → {{ b.check_out|dmy }}</td><td>{{ badge(b.status) }}</td></tr>{% endfor %}
+      </tbody></table></div>{% else %}<div class="empty">No stays yet.</div>{% endif %}
+    </div>
+    <div class="card"><div class="card-head"><h2>Events</h2></div>
+      {% if events %}<div class="table-wrap"><table class="table">
+        <thead><tr><th>Event</th><th>Venue</th><th>Date</th><th>Status</th></tr></thead><tbody>
+        {% for e in events %}<tr><td><a class="row-link" href="{{ url_for('front.event', event_id=e.id) }}">{{ e.code }}</a> {{ e.event_name }}</td>
+          <td>{{ e.venue_name }}</td><td>{{ e.event_date|dmy }}</td><td>{{ badge(e.status) }}</td></tr>{% endfor %}
+      </tbody></table></div>{% else %}<div class="empty">No events yet.</div>{% endif %}
+    </div>
+    <div class="card"><div class="card-head"><h2>Invoices</h2></div>
+      {% if invoices %}<div class="table-wrap"><table class="table">
+        <thead><tr><th>Number</th><th>Date</th><th class="num">Total</th><th>Status</th></tr></thead><tbody>
+        {% for i in invoices %}<tr><td><a class="row-link" href="{{ url_for('front.invoice', invoice_id=i.id) }}">{{ i.number }}</a></td>
+          <td>{{ i.issue_date|dmy }}</td><td class="num">{{ i.total|money }}</td><td>{{ badge(i.status) }}</td></tr>{% endfor %}
+      </tbody></table></div>{% else %}<div class="empty">No invoices yet.</div>{% endif %}
+    </div>
+  </div>
+  <div class="card"><div class="card-head"><h2>Details</h2></div><div class="card-body">
+    <dl class="details">
+      <dt>Phone</dt><dd>{{ guest.phone or '—' }}</dd>
+      <dt>Email</dt><dd>{{ guest.email or '—' }}</dd>
+      <dt>Company</dt><dd>{{ guest.company or '—' }}</dd>
+      <dt>GSTIN</dt><dd>{{ guest.gstin or '—' }}</dd>
+      <dt>ID proof</dt><dd>{{ guest.id_type or '—' }} {{ guest.id_number }}</dd>
+      <dt>Address</dt><dd style="white-space:pre-line">{{ guest.address or '—' }}</dd>
+    </dl>
+  </div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}{{ ent.title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ ent.title }}</h1><p>{{ ent.intro }}</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('inventory.edit', kind=kind) }}">{{ icon('plus') }} Add {{ ent.singular }}</a></div>
+</div>
+<div class="card">
+  {% if rows %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr>{% for key, label, fmt in ent.columns %}<th class="{{ 'num' if fmt in ('money', 'money_open', 'pct') }}">{{ label }}</th>{% endfor %}<th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        {% for key, label, fmt in ent.columns %}
+          {% set v = r[key] %}
+          {% if fmt == 'money' %}<td class="num">{{ v|money }}</td>
+          {% elif fmt == 'money_open' %}<td class="num">{{ v|money if v is not none else 'No limit' }}</td>
+          {% elif fmt == 'pct' %}<td class="num">{{ '%g'|format(v) }}%</td>
+          {% elif fmt == 'bool' %}<td>{{ badge('yes', 'Yes') if v else badge('no', 'No') }}</td>
+          {% elif fmt == 'status' %}<td>{{ badge(v) }}</td>
+          {% elif fmt == 'kind' %}<td>{{ {'banquet': 'Banquet hall', 'lawn': 'Lawn', 'room': 'Room tariff', 'venue': 'Banquet / lawn', 'extra': 'Extras', 'all': 'Everything'}.get(v, v) }}</td>
+          {% elif loop.first %}<td><a class="row-link" href="{{ url_for('inventory.edit', kind=kind, item_id=r.id) }}">{{ v }}</a></td>
+          {% else %}<td>{{ v if v is not none }}</td>{% endif %}
+        {% endfor %}
+        <td class="right"><a class="btn btn-sm" href="{{ url_for('inventory.edit', kind=kind, item_id=r.id) }}">{{ icon('edit') }} Edit</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty"><strong>No {{ ent.title|lower }} yet</strong>Add your first {{ ent.singular }} to get started.</div>
+  {% endif %}
+</div>
+{% endblock %}

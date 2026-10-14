@@ -1,0 +1,7 @@
+.git
+.venv
+instance
+vendor_keys
+dist
+tests
+__pycache__

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Guests{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Guests</h1><p>Guest profiles with their stays, events and invoices.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('front.guest_form') }}">{{ icon('plus') }} Add guest</a></div>
+</div>
+<form class="toolbar" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="Search name, phone, email, company" style="min-width:300px">
+  <button class="btn">{{ icon('search') }} Search</button>
+  {% if q %}<a href="{{ url_for('front.guests') }}" class="small">Clear</a>{% endif %}
+</form>
+<div class="card">
+  {% if rows %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Company</th><th class="num">Stays</th><th class="num">Events</th></tr></thead>
+    <tbody>
+    {% for g in rows %}
+      <tr><td><a class="row-link" href="{{ url_for('front.guest', guest_id=g.id) }}">{{ g.full_name }}</a></td>
+        <td>{{ g.phone }}</td><td>{{ g.email }}</td><td>{{ g.company }}</td>
+        <td class="num">{{ g.stays }}</td><td class="num">{{ g.events }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="empty"><strong>No guests found</strong>Guests are added automatically when you create a booking.</div>{% endif %}
+</div>
+{% endblock %}

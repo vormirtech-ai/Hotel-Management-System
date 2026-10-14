@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}License{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>License</h1><p>Activate this installation with the key supplied by your vendor.</p></div></div>
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head"><h2>Status</h2>
+      {% if status.valid %}{{ badge('valid', 'Licensed') }}{% elif trial_left > 0 %}{{ badge('trial', 'Trial') }}{% else %}{{ badge('invalid', 'Not activated') }}{% endif %}</div>
+    <div class="card-body">
+      <dl class="details">
+        {% if status.valid %}
+          <dt>Licensed to</dt><dd>{{ status.payload.licensee }}</dd>
+          <dt>Edition</dt><dd>{{ status.payload.edition|capitalize }}</dd>
+          <dt>Valid until</dt><dd>{{ 'Lifetime' if status.payload.expires == 'never' else status.payload.expires|dmy }}</dd>
+          <dt>Rooms allowed</dt><dd>{{ status.payload.max_rooms or 'Unlimited' }}</dd>
+          <dt>Issued</dt><dd>{{ status.payload.issued|dmy }}</dd>
+        {% else %}
+          <dt>Trial</dt><dd>{{ trial_left }} day{{ 's' if trial_left != 1 }} left</dd>
+          {% if has_key %}<dt>Saved key</dt><dd style="color:var(--danger)">{{ status.reason }}</dd>{% endif %}
+        {% endif %}
+        <dt>Installation ID</dt><dd><span class="mono">{{ install_id }}</span></dd>
+      </dl>
+      <p class="muted small mt">Send the installation ID to your vendor to receive a key locked to this computer.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>{{ 'Replace license key' if status.valid else 'Activate' }}</h2></div>
+    <div class="card-body">
+      {% if user.role == 'admin' %}
+      <form method="post" class="stack">
+        {{ csrf() }}
+        <div class="field"><label for="license_key">License key</label>
+          <textarea id="license_key" name="license_key" class="license-key" placeholder="HMS1-…" required></textarea></div>
+        <div><button class="btn btn-primary">{{ icon('key') }} Activate</button></div>
+      </form>
+      {% else %}
+      <p class="muted">Only an administrator can activate a license.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<div class="card mt"><div class="card-body small muted">
+  Software by <strong>Vormir Tech Solutions</strong>. License keys are digitally signed; they cannot be edited or created without the vendor's private key.
+</div></div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Invoices</h1><p>Invoices are issued at check-out and when an event is completed.</p></div></div>
+<form class="toolbar" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="Invoice number or guest">
+  <label class="muted small">From</label><input type="date" name="start" value="{{ start }}">
+  <label class="muted small">To</label><input type="date" name="end" value="{{ end }}">
+  <button class="btn">{{ icon('search') }} Filter</button>
+  {% if q or start or end %}<a class="small" href="{{ url_for('front.invoices') }}">Clear</a>{% endif %}
+</form>
+<div class="card">
+  {% if rows %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Number</th><th>Date</th><th>Guest</th><th>For</th><th class="num">Taxable</th><th class="num">Tax</th><th class="num">Total</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for i in rows %}
+      <tr><td><a class="row-link" href="{{ url_for('front.invoice', invoice_id=i.id) }}">{{ i.number }}</a></td>
+        <td class="nowrap">{{ i.issue_date|dmy }}</td><td>{{ i.full_name }}</td><td>{{ 'Room stay' if i.booking_id else 'Event' }}</td>
+        <td class="num">{{ i.taxable|money }}</td><td class="num">{{ i.tax_total|money }}</td><td class="num"><strong>{{ i.total|money }}</strong></td>
+        <td>{{ badge(i.status) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="empty"><strong>No invoices found</strong>Check out a guest or complete an event to issue one.</div>{% endif %}
+</div>
+{% endblock %}

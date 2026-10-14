@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}{{ 'Edit ' ~ event.code if event else 'Book event' }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>{% if event %}<a href="{{ url_for('front.event', event_id=event.id) }}" class="small">{{ icon('arrow-left') }} {{ event.code }}</a>{% endif %}
+    <h1>{{ 'Edit event' if event else 'Book a banquet hall or lawn' }}</h1>
+    <p>Full day, or a morning / evening half-day slot. Double bookings are prevented automatically.</p></div>
+</div>
+<form method="post" novalidate>
+  {{ csrf() }}
+  <div class="grid grid-main">
+    <div class="stack">
+      <div class="card"><div class="card-head"><h2>Event</h2></div><div class="card-body"><div class="form-grid">
+        <div class="field full {{ 'has-error' if errors.venue_id }}"><label for="venue_id">Venue *</label>
+          <select id="venue_id" name="venue_id" data-venue-select required>
+            {% for v in venues %}<option value="{{ v.id }}" data-full="{{ '%g'|format(v.full_day_rate) }}" data-half="{{ '%g'|format(v.half_day_rate) }}" {{ 'selected' if form.get('venue_id')|string == v.id|string }}>{{ v.name }} – {{ 'Banquet hall' if v.kind == 'banquet' else 'Lawn' }}{% if v.capacity %} · up to {{ v.capacity }} guests{% endif %}</option>{% endfor %}
+          </select>{{ err(errors, 'venue_id') }}</div>
+        <div class="field {{ 'has-error' if errors.event_date }}"><label for="event_date">Date *</label><input type="date" id="event_date" name="event_date" value="{{ form.get('event_date', '') }}" required>{{ err(errors, 'event_date') }}</div>
+        <div class="field {{ 'has-error' if errors.slot }}"><label for="slot">Slot *</label>
+          <select id="slot" name="slot" data-slot-select>{% for v, l in slots %}<option value="{{ v }}" {{ 'selected' if form.get('slot') == v }}>{{ l }}</option>{% endfor %}</select>{{ err(errors, 'slot') }}</div>
+        <div class="field"><label for="event_name">Event name</label><input type="text" id="event_name" name="event_name" maxlength="120" placeholder="e.g. Sharma–Verma Wedding" value="{{ form.get('event_name', '') }}"></div>
+        <div class="field"><label for="event_type">Type</label>
+          <select id="event_type" name="event_type"><option value="">—</option>{% for v, l in event_types %}<option value="{{ v }}" {{ 'selected' if form.get('event_type') == v }}>{{ l }}</option>{% endfor %}</select></div>
+        <div class="field {{ 'has-error' if errors.pax }}"><label for="pax">Expected guests</label><input type="number" id="pax" name="pax" min="0" value="{{ form.get('pax', '') }}">{{ err(errors, 'pax') }}</div>
+        <div class="field {{ 'has-error' if errors.rate }}"><label for="rate">Rate *</label><input type="number" step="0.01" min="0" id="rate" name="rate" data-rate-target value="{{ form.get('rate', '') }}">{{ err(errors, 'rate') }}</div>
+        <div class="field {{ 'has-error' if errors.discount }}"><label for="discount">Discount</label><input type="number" step="0.01" min="0" id="discount" name="discount" value="{{ form.get('discount', 0) }}">{{ err(errors, 'discount') }}</div>
+        <div class="field full"><label for="notes">Notes</label><textarea id="notes" name="notes" placeholder="Menu, decoration, timings…">{{ form.get('notes', '') }}</textarea></div>
+      </div></div></div>
+      {% if not event %}{% include "_guest_picker.html" %}{% endif %}
+    </div>
+    <div class="stack">
+      {% if not event %}{% include "_advance.html" %}{% endif %}
+      <button class="btn btn-primary" style="padding:12px">{{ icon('check') }} {{ 'Save changes' if event else 'Confirm event' }}</button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Prefill the rate for a new booking from the selected venue and slot.
+  (function () {
+    var rate = document.getElementById("rate");
+    if (rate && !rate.value) document.getElementById("venue_id").dispatchEvent(new Event("change"));
+  })();
+</script>
+{% endblock %}

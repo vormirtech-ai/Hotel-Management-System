@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Daily progress report{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Daily progress report</h1><p>{{ day.strftime('%A, %d %B %Y') }} · {{ settings.hotel_name }}</p></div>
+  <form class="actions" method="get">
+    <a class="btn" href="{{ url_for('reports.daily', date=prev.isoformat()) }}" title="Previous day">{{ icon('arrow-left') }}</a>
+    <input type="date" name="date" value="{{ day.isoformat() }}" onchange="this.form.submit()" style="width:auto">
+    <a class="btn" href="{{ url_for('reports.daily', date=next.isoformat()) }}" title="Next day">{{ icon('arrow-right') }}</a>
+    <a class="btn" href="{{ url_for('reports.daily') }}">Today</a>
+    <button type="button" class="btn btn-primary" onclick="window.print()">{{ icon('printer') }} Print</button>
+  </form>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="label">Occupancy</div><div class="value">{{ '%.1f'|format(row.occupancy) }}%</div><div class="sub">{{ row.occupied }} / {{ row.total_rooms }} rooms · {{ row.guests }} guests</div></div>
+  <div class="kpi"><div class="label">ADR</div><div class="value">{{ row.adr|money }}</div><div class="sub">average daily rate</div></div>
+  <div class="kpi"><div class="label">RevPAR</div><div class="value">{{ row.revpar|money }}</div><div class="sub">revenue per available room</div></div>
+  <div class="kpi"><div class="label">Total revenue</div><div class="value">{{ row.revenue|money }}</div><div class="sub">before tax</div></div>
+  <div class="kpi"><div class="label">Collections</div><div class="value">{{ row.collected|money }}</div><div class="sub">{{ payments|length }} payment(s)</div></div>
+</div>
+
+<div class="grid grid-3 mb">
+  <div class="card"><div class="card-head"><h2>Revenue (pre-tax)</h2></div><div class="card-body">
+    <table class="totals" style="max-width:none">
+      <tr><td class="muted">Rooms</td><td>{{ row.room_revenue|money }}</td></tr>
+      <tr><td class="muted">Banquets &amp; lawns</td><td>{{ row.venue_revenue|money }}</td></tr>
+      <tr><td class="muted">Extras</td><td>{{ row.extra_revenue|money }}</td></tr>
+      <tr class="grand"><td>Total</td><td>{{ row.revenue|money }}</td></tr>
+    </table></div></div>
+  <div class="card"><div class="card-head"><h2>Collections</h2></div><div class="card-body">
+    <table class="totals" style="max-width:none">
+      <tr><td class="muted">Cash</td><td>{{ row.pay_cash|money }}</td></tr>
+      <tr><td class="muted">Card</td><td>{{ row.pay_card|money }}</td></tr>
+      <tr><td class="muted">UPI</td><td>{{ row.pay_upi|money }}</td></tr>
+      <tr><td class="muted">Bank / other</td><td>{{ (row.pay_bank + row.pay_other)|money }}</td></tr>
+      <tr class="grand"><td>Total</td><td>{{ row.collected|money }}</td></tr>
+    </table></div></div>
+  <div class="card"><div class="card-head"><h2>Activity</h2></div><div class="card-body">
+    <table class="totals" style="max-width:none">
+      <tr><td class="muted">Arrivals</td><td>{{ row.arrivals }}</td></tr>
+      <tr><td class="muted">Departures</td><td>{{ row.departures }}</td></tr>
+      <tr><td class="muted">New bookings</td><td>{{ row.new_bookings }}</td></tr>
+      <tr><td class="muted">Cancellations / no-shows</td><td>{{ row.cancellations }}</td></tr>
+      <tr><td class="muted">Invoices issued</td><td>{{ row.invoices }} · {{ row.invoiced|money }}</td></tr>
+      <tr><td class="muted">Tax invoiced</td><td>{{ row.tax|money }}</td></tr>
+    </table></div></div>
+</div>
+
+<div class="grid grid-2">
+  {% for title, items in [('Arrivals', arrivals), ('Departures', departures)] %}
+  <div class="card"><div class="card-head"><h2>{{ title }}</h2><span class="muted small">{{ items|length }}</span></div>
+    {% if items %}<div class="table-wrap"><table class="table compact"><thead><tr><th>Room</th><th>Guest</th><th>Booking</th><th>Status</th></tr></thead><tbody>
+      {% for b in items %}<tr><td>{{ b.room_number }}</td><td>{{ b.guest_name }}<div class="muted small">{{ b.phone }}</div></td>
+        <td><a href="{{ url_for('front.booking', booking_id=b.id) }}">{{ b.code }}</a></td><td>{{ badge(b.status, 'In house' if b.status == 'checked_in' else None) }}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<div class="empty">None.</div>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="card"><div class="card-head"><h2>In house</h2><span class="muted small">{{ in_house|length }}</span></div>
+    {% if in_house %}<div class="table-wrap"><table class="table compact"><thead><tr><th>Room</th><th>Guest</th><th>Departure</th></tr></thead><tbody>
+      {% for b in in_house %}<tr><td>{{ b.room_number }}</td><td><a href="{{ url_for('front.booking', booking_id=b.id) }}">{{ b.guest_name }}</a></td><td>{{ b.check_out|dmy }}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<div class="empty">None.</div>{% endif %}
+  </div>
+  <div class="card"><div class="card-head"><h2>Events</h2><span class="muted small">{{ events|length }}</span></div>
+    {% if events %}<div class="table-wrap"><table class="table compact"><thead><tr><th>Venue</th><th>Event</th><th>Slot</th><th class="num">Guests</th></tr></thead><tbody>
+      {% for e in events %}<tr><td>{{ e.venue_name }}</td><td><a href="{{ url_for('front.event', event_id=e.id) }}">{{ e.event_name or e.event_type or e.code }}</a><div class="muted small">{{ e.guest_name }}</div></td>
+        <td>{{ {'full': 'Full day', 'morning': 'Morning', 'evening': 'Evening'}[e.slot] }}</td><td class="num">{{ e.pax }}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<div class="empty">None.</div>{% endif %}
+  </div>
+</div>
+
+<div class="card mt"><div class="card-head"><h2>Payments received</h2></div>
+  {% if payments %}<div class="table-wrap"><table class="table compact"><thead><tr><th>Ref</th><th>Guest</th><th>Method</th><th>Reference</th><th class="num">Amount</th></tr></thead><tbody>
+    {% for p in payments %}<tr><td>{{ p.ref_code }}</td><td>{{ p.guest_name }}</td><td>{{ p.method|upper }}</td><td>{{ p.reference }}</td><td class="num">{{ p.amount|money }}</td></tr>{% endfor %}
+  </tbody><tfoot><tr><td colspan="4">Total</td><td class="num">{{ row.collected|money }}</td></tr></tfoot></table></div>
+  {% else %}<div class="empty">No payments recorded on this day.</div>{% endif %}
+</div>
+<p class="muted small mt">Room revenue is counted per night stayed; event revenue on the event day; extras on the charge date. Collections are by payment date.</p>
+{% endblock %}

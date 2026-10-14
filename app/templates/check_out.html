@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Check out {{ b.code }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><a href="{{ url_for('front.booking', booking_id=b.id) }}" class="small">{{ icon('arrow-left') }} {{ b.code }}</a>
+    <h1>Check out · {{ b.guest_name }}</h1>
+    <p>Room {{ b.room_number }} · {{ b.check_in|dmy }} → {{ actual_out|dmy }}
+      {% if actual_out < planned_out %}<strong>(early departure – planned {{ planned_out|dmy }})</strong>
+      {% elif actual_out > planned_out %}<strong>(overstay – planned {{ planned_out|dmy }})</strong>{% endif %}</p></div>
+</div>
+<div class="grid grid-main">
+  <div class="card">
+    <div class="card-head"><h2>Final bill</h2></div>
+    <div class="table-wrap"><table class="table compact">
+      <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+      <tbody>{% for ln in bill.lines %}<tr><td>{{ ln.description }}{% if ln.discount %}<div class="muted small">Discount −{{ ln.discount|money }}</div>{% endif %}</td>
+        <td class="num">{{ '%g'|format(ln.qty) }}</td><td class="num">{{ ln.rate|money }}</td><td class="num">{{ ln.taxable|money }}</td></tr>{% endfor %}
+        {% if late_fee > 0 %}<tr><td colspan="3" class="muted">+ Late check-out fee (if applied below, taxed as room)</td><td class="num muted">{{ late_fee|money }}</td></tr>{% endif %}
+      </tbody>
+    </table></div>
+    <div class="card-body">
+      <table class="totals">
+        <tr><td class="muted">Subtotal</td><td>{{ bill.subtotal|money }}</td></tr>
+        {% if bill.discount %}<tr><td class="muted">Discount</td><td>−{{ bill.discount|money }}</td></tr>{% endif %}
+        {% for t in bill.tax_summary %}<tr><td class="muted">{{ t.name }} @ {{ '%g'|format(t.rate) }}%</td><td>{{ t.amount|money }}</td></tr>{% endfor %}
+        {% if bill.round_off %}<tr><td class="muted">Round off</td><td>{{ bill.round_off|money }}</td></tr>{% endif %}
+        <tr class="grand"><td>Total</td><td>{{ bill.total|money }}</td></tr>
+        <tr><td class="muted">Paid so far</td><td>{{ paid|money }}</td></tr>
+        <tr><td><strong>Balance</strong></td><td class="{{ 'balance-due' if balance > 0 else 'balance-ok' }}">{{ balance|money }}</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="card"><div class="card-body">
+    <form method="post" class="stack">
+      {{ csrf() }}
+      {% if late_fee > 0 %}
+      <label class="check"><input type="checkbox" name="apply_late_fee" value="1" checked> Apply late check-out fee of {{ late_fee|money }}</label>
+      {% endif %}
+      {% if balance > 0 %}
+      <div class="flash error">Balance of {{ balance|money }} is still due. Record the payment on the booking page before or after check-out.</div>
+      {% endif %}
+      <p class="muted small">Checking out issues the invoice, frees the room and marks it for cleaning.</p>
+      <button class="btn btn-primary" style="padding:12px">{{ icon('logout') }} Check out &amp; issue invoice</button>
+      <a class="btn" href="{{ url_for('front.booking', booking_id=b.id) }}#payments">{{ icon('wallet') }} Record a payment first</a>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

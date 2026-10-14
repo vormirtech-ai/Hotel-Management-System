@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Users</h1><p>People who can sign in. Front desk staff cannot change setup or see reports.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('auth.user_form') }}">{{ icon('plus') }} Add user</a></div>
+</div>
+<div class="card"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
+  <tbody>
+  {% for u in rows %}
+    <tr>
+      <td><a class="row-link" href="{{ url_for('auth.user_form', user_id=u.id) }}">{{ u.username }}</a></td>
+      <td>{{ u.full_name }}</td>
+      <td>{{ 'Administrator' if u.role == 'admin' else 'Front desk' }}</td>
+      <td>{{ badge('yes', 'Active') if u.active else badge('no', 'Disabled') }}</td>
+      <td class="muted">{{ u.created_at|dmy }}</td>
+      <td class="right"><a class="btn btn-sm" href="{{ url_for('auth.user_form', user_id=u.id) }}">{{ icon('edit') }} Edit</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

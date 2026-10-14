@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Booking {{ b.code }}{% endblock %}
+{% block content %}
+{% set segment = 'bookings' %}{% set record = b %}
+{% set locked = invoice or b.status in ('cancelled', 'no_show') %}
+<div class="page-head">
+  <div><a href="{{ url_for('front.bookings') }}" class="small">{{ icon('arrow-left') }} Room bookings</a>
+    <h1>{{ b.code }} · {{ b.guest_name }} {{ badge(b.status, 'In house' if b.status == 'checked_in' else None) }}</h1>
+    <p>Room {{ b.room_number }} ({{ b.type_name }}) · {{ b.check_in|dmy }} → {{ b.check_out|dmy }} · {{ (b.check_out|todate - b.check_in|todate).days }} night(s)</p></div>
+  <div class="actions">
+    {% if b.status in ('reserved', 'checked_in') %}<a class="btn" href="{{ url_for('front.booking_edit', booking_id=b.id) }}">{{ icon('edit') }} Edit / extend</a>{% endif %}
+    {% if b.status == 'reserved' %}
+      {% if b.check_in <= today.isoformat() %}
+      <form method="post" action="{{ url_for('front.booking_action', booking_id=b.id, action='no-show') }}" class="inline" data-confirm="Mark this booking as a no-show?">{{ csrf() }}<button class="btn">No-show</button></form>
+      {% endif %}
+      <form method="post" action="{{ url_for('front.booking_action', booking_id=b.id, action='cancel') }}" class="inline" data-confirm="Cancel this booking?">{{ csrf() }}<button class="btn btn-danger">Cancel booking</button></form>
+      <form method="post" action="{{ url_for('front.check_in', booking_id=b.id) }}" class="inline">{{ csrf() }}<button class="btn btn-success" {% if b.check_in > today.isoformat() %}disabled title="Arrival date is {{ b.check_in|dmy }}"{% endif %}>{{ icon('login') }} Check in</button></form>
+    {% elif b.status == 'checked_in' %}
+      <a class="btn btn-primary" href="{{ url_for('front.check_out', booking_id=b.id) }}">{{ icon('logout') }} Check out</a>
+    {% elif b.status == 'checked_out' and not invoice %}
+      <form method="post" action="{{ url_for('front.booking_action', booking_id=b.id, action='invoice') }}" class="inline">{{ csrf() }}<button class="btn btn-primary">{{ icon('receipt') }} Issue invoice</button></form>
+    {% endif %}
+  </div>
+</div>
+
+{% if b.status == 'checked_in' and late_fee > 0 %}
+<div class="flashes"><div class="flash info">Past check-out time: a late check-out fee of {{ late_fee|money }} will be suggested at check-out.</div></div>
+{% endif %}
+
+<div class="grid grid-main">
+  <div class="stack">{% include "_ledger.html" %}</div>
+  <div class="stack">
+    <div class="card"><div class="card-head"><h2>Stay</h2></div><div class="card-body">
+      <dl class="details">
+        <dt>Room</dt><dd>{{ b.room_number }} · {{ b.type_name }}<div class="muted small">{{ b.floor_name }}</div></dd>
+        <dt>Check-in</dt><dd>{{ b.check_in|dmy }}{% if b.checked_in_at %}<div class="muted small">arrived {{ b.checked_in_at|dt }}</div>{% endif %}</dd>
+        <dt>Check-out</dt><dd>{{ b.check_out|dmy }}{% if b.checked_out_at %}<div class="muted small">left {{ b.checked_out_at|dt }}</div>{% endif %}</dd>
+        <dt>Guests</dt><dd>{{ b.adults }} adult{{ 's' if b.adults != 1 }}{% if b.children %}, {{ b.children }} child{{ 'ren' if b.children != 1 }}{% endif %}</dd>
+        <dt>Rate</dt><dd>{{ b.rate|money }} / night</dd>
+        {% if b.extra_beds %}<dt>Extra beds</dt><dd>{{ b.extra_beds }} × {{ b.extra_bed_rate|money }}</dd>{% endif %}
+        {% if b.discount %}<dt>Discount</dt><dd>{{ b.discount|money }}</dd>{% endif %}
+        <dt>Source</dt><dd>{{ b.source|capitalize }}</dd>
+        <dt>Booked</dt><dd>{{ b.created_at|dt }}</dd>
+        {% if b.notes %}<dt>Notes</dt><dd style="white-space:pre-line">{{ b.notes }}</dd>{% endif %}
+      </dl>
+    </div></div>
+    <div class="card"><div class="card-head"><h2>Guest</h2><a class="small" href="{{ url_for('front.guest', guest_id=guest.id) }}">Profile</a></div><div class="card-body">
+      <dl class="details">
+        <dt>Name</dt><dd>{{ guest.full_name }}</dd>
+        <dt>Phone</dt><dd>{{ guest.phone or '—' }}</dd>
+        <dt>Email</dt><dd>{{ guest.email or '—' }}</dd>
+        <dt>ID proof</dt><dd>{{ guest.id_type or '—' }} {{ guest.id_number }}</dd>
+        {% if guest.company %}<dt>Company</dt><dd>{{ guest.company }}</dd>{% endif %}
+        {% if guest.gstin %}<dt>GSTIN</dt><dd>{{ guest.gstin }}</dd>{% endif %}
+      </dl>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

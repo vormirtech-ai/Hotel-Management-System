@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Demand forecast{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Demand forecast <span class="badge trial">Beta</span></h1>
+    <p>Expected rooms sold for the next 30 days, from bookings on hand and the same weekday over the last 8 weeks.</p></div>
+</div>
+{% if not has_history %}
+<div class="flashes"><div class="flash info">There is no booking history yet, so the forecast only shows bookings already on hand. It improves automatically as data builds up.</div></div>
+{% endif %}
+<div class="card">
+  <div class="table-wrap"><table class="table compact">
+    <thead><tr><th>Date</th><th class="num">On the books</th><th class="num">Forecast</th><th style="width:45%">Expected occupancy</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr><td class="nowrap">{{ r.date.strftime('%a, %d %b') }}</td><td class="num">{{ r.on_books }}</td><td class="num"><strong>{{ '%.1f'|format(r.forecast) }}</strong></td>
+        <td><div style="display:flex;gap:10px;align-items:center"><div class="bar alt" style="flex:1"><span style="width:{{ r.occupancy }}%"></span></div><span class="small nowrap" style="width:44px">{{ '%.0f'|format(r.occupancy) }}%</span></div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+<p class="muted small mt">Based on {{ total_rooms }} active rooms and {{ history_days }} days of history. Developers: the model lives in <code>app/forecast.py</code> and can be replaced with a more advanced one without touching this page.</p>
+{% endblock %}

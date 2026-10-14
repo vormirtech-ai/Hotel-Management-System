@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ error.code }} {{ error.name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}"></head>
+<body>
+<div style="min-height:100vh;display:grid;place-items:center;padding:24px">
+  <div class="card" style="max-width:480px;width:100%"><div class="card-body" style="text-align:center;padding:36px">
+    <div class="muted" style="font-size:44px;font-weight:700">{{ error.code }}</div>
+    <h1 style="margin:6px 0 10px">{{ error.name }}</h1>
+    <p class="muted">{{ error.description }}</p>
+    <div class="actions" style="justify-content:center;margin-top:18px">
+      <a class="btn" href="javascript:history.back()">Go back</a>
+      <a class="btn btn-primary" href="{{ url_for('front.dashboard') }}">Dashboard</a>
+    </div>
+  </div></div>
+</div>
+</body>
+</html>

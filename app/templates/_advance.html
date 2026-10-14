@@ -1,0 +1,12 @@
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+<div class="card">
+  <div class="card-head"><h2>Advance payment</h2><span class="muted small">optional</span></div>
+  <div class="card-body"><div class="form-grid">
+    <div class="field {{ 'has-error' if errors.advance_amount }}"><label for="advance_amount">Amount</label>
+      <input type="number" step="0.01" min="0" id="advance_amount" name="advance_amount" value="{{ form.get('advance_amount', '') }}">{{ err(errors, 'advance_amount') }}</div>
+    <div class="field"><label for="advance_method">Method</label>
+      <select id="advance_method" name="advance_method">{% for v, l in methods %}<option value="{{ v }}" {{ 'selected' if form.get('advance_method') == v }}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="field full"><label for="advance_reference">Reference</label>
+      <input type="text" id="advance_reference" name="advance_reference" maxlength="80" placeholder="UPI / card / cheque reference" value="{{ form.get('advance_reference', '') }}"></div>
+  </div></div>
+</div>

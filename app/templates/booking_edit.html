@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Edit {{ b.code }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><a href="{{ url_for('front.booking', booking_id=b.id) }}" class="small">{{ icon('arrow-left') }} {{ b.code }}</a>
+    <h1>Edit booking · {{ b.guest_name }}</h1>
+    <p>{% if b.status == 'checked_in' %}Guest is in house: you can extend or shorten the stay, change rate, or move rooms.{% else %}Change dates, room or rate.{% endif %}</p></div>
+</div>
+{% if b.status == 'reserved' %}
+<form method="get" class="card mb"><div class="card-body">
+  <div class="toolbar" style="margin:0;align-items:flex-end">
+    <div class="field"><label>Check-in</label><input type="date" name="check_in" value="{{ check_in }}"></div>
+    <div class="field"><label>Check-out</label><input type="date" name="check_out" value="{{ check_out }}"></div>
+    <button class="btn">{{ icon('search') }} Check availability</button>
+  </div>
+</div></form>
+{% else %}
+<form method="get" class="card mb"><div class="card-body">
+  <div class="toolbar" style="margin:0;align-items:flex-end">
+    <div class="field"><label>Check-in</label><input type="date" value="{{ check_in }}" disabled></div>
+    <div class="field"><label>New check-out</label><input type="date" name="check_out" value="{{ check_out }}"></div>
+    <button class="btn">{{ icon('search') }} Check availability</button>
+  </div>
+</div></form>
+{% endif %}
+<form method="post" novalidate>
+  {{ csrf() }}
+  <input type="hidden" name="check_in" value="{{ check_in }}">
+  <input type="hidden" name="check_out" value="{{ check_out }}">
+  {{ err(errors, 'check_in') }}{{ err(errors, 'check_out') }}
+  <div class="grid grid-main">
+    <div class="card">
+      <div class="card-head"><h2>Room for {{ check_in|dmy }} → {{ check_out|dmy }}</h2></div>
+      <div class="card-body">
+        {% if rooms %}
+        <div class="room-options">
+          {% for r in rooms %}
+          <label class="room-option">
+            <input type="radio" name="room_id" value="{{ r.id }}" data-rate="{{ '%g'|format(r.eff_rate) }}" {{ 'checked' if (form.get('room_id') or b.room_id)|string == r.id|string }}>
+            <strong>{{ r.number }}</strong><span>{{ r.type_name }} · {{ r.floor_name }}</span>
+            <span>Sleeps {{ r.max_occupancy }}{% if r.id == b.room_id %} · <em>current</em>{% endif %}</span>
+            <b>{{ r.eff_rate|money }}</b>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}<div class="empty"><strong>No rooms free for these dates</strong>The current room is booked by someone else on these dates. Try other dates.</div>{% endif %}
+        {{ err(errors, 'room_id') }}
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card"><div class="card-head"><h2>Stay details</h2></div><div class="card-body"><div class="form-grid">
+        <div class="field {{ 'has-error' if errors.adults }}"><label>Adults</label><input type="number" name="adults" min="1" value="{{ form.get('adults') }}">{{ err(errors, 'adults') }}</div>
+        <div class="field"><label>Children</label><input type="number" name="children" min="0" value="{{ form.get('children') }}"></div>
+        <div class="field {{ 'has-error' if errors.rate }}"><label>Rate / night</label><input type="number" step="0.01" min="0" name="rate" value="{{ form.get('rate') }}">{{ err(errors, 'rate') }}</div>
+        <div class="field"><label>Extra beds</label><input type="number" name="extra_beds" min="0" max="10" value="{{ form.get('extra_beds') }}"></div>
+        <div class="field full {{ 'has-error' if errors.discount }}"><label>Discount (whole stay)</label><input type="number" step="0.01" min="0" name="discount" value="{{ form.get('discount') }}">{{ err(errors, 'discount') }}</div>
+        <div class="field full"><label>Source</label><select name="source">{% for v, l in sources %}<option value="{{ v }}" {{ 'selected' if form.get('source') == v }}>{{ l }}</option>{% endfor %}</select></div>
+        <div class="field full"><label>Notes</label><textarea name="notes">{{ form.get('notes') or '' }}</textarea></div>
+      </div></div></div>
+      <div class="actions"><button class="btn btn-primary" {{ 'disabled' if not rooms }}>{{ icon('check') }} Save changes</button>
+        <a class="btn" href="{{ url_for('front.booking', booking_id=b.id) }}">Cancel</a></div>
+    </div>
+  </div>
+</form>
+{% endblock %}

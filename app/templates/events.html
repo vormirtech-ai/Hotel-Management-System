@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, csrf, badge, field, err with context %}
+{% block title %}Banquets & lawns{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Banquets &amp; lawns</h1><p>Event bookings for banquet halls and lawns.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('front.event_new') }}">{{ icon('plus') }} Book event</a></div>
+</div>
+<form class="toolbar" method="get">
+  <div class="chips">
+    {% for v, l in [('upcoming', 'Upcoming'), ('confirmed', 'Confirmed'), ('completed', 'Completed'), ('cancelled', 'Cancelled'), ('all', 'All')] %}
+      <a class="chip {{ 'active' if status == v }}" href="{{ url_for('front.events', status=v, q=q or None) }}">{{ l }}</a>
+    {% endfor %}
+  </div>
+  <input type="hidden" name="status" value="{{ status }}">
+  <input type="search" name="q" value="{{ q }}" placeholder="Guest, event, venue or number">
+  <button class="btn">{{ icon('search') }}</button>
+</form>
+<div class="card">
+  {% if rows %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Event</th><th>Date</th><th>Venue</th><th>Host</th><th class="num">Guests</th><th class="num">Amount</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for e in rows %}
+      <tr>
+        <td><a class="row-link" href="{{ url_for('front.event', event_id=e.id) }}">{{ e.code }}</a><div class="small">{{ e.event_name or e.event_type }}</div></td>
+        <td class="nowrap">{{ e.event_date|dmy }}<div class="muted small">{{ {'full': 'Full day', 'morning': 'Morning', 'evening': 'Evening'}[e.slot] }}</div></td>
+        <td>{{ e.venue_name }}<div class="muted small">{{ 'Banquet hall' if e.kind == 'banquet' else 'Lawn' }}</div></td>
+        <td>{{ e.full_name }}</td><td class="num">{{ e.pax }}</td><td class="num">{{ (e.rate - e.discount)|money }}</td>
+        <td>{{ badge(e.status) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="empty"><strong>No events here</strong>Book a banquet hall or lawn for weddings, parties and conferences.</div>{% endif %}
+</div>
+{% endblock %}
